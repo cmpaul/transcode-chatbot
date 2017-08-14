@@ -1,12 +1,25 @@
 const http = require("http");
+const qstr = require('querystring');
 const port = 3000;
 
 const requestHandler = (request, response) => {
-  response.end(
-    JSON.stringify({
-      text: "Hello, world!"
-    })
-  );
+  if (request.method == "POST") {
+    let body = "";
+    request.on("data", (data) => {
+      body += data;
+      if (body.length > 1e6) request.connection.destroy();
+    });
+    request.on("end", () => {
+      let post = qstr.parse(body);
+      console.log(post);
+      let text = post.text.substring(post.trigger_word.length + 1);
+      response.end(
+        JSON.stringify({
+          text: "You want to know about: " + JSON.stringify(text)
+        })
+      );
+    });
+  }
 };
 
 const server = http.createServer(requestHandler);
