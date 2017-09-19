@@ -1,5 +1,6 @@
 const http = require("http");
-const qstr = require('querystring');
+const qstr = require("querystring");
+const req = require("request");
 const port = 3000;
 
 // Create the function that will respond to a request
@@ -20,11 +21,22 @@ const requestHandler = function(request, response) {
       let post = qstr.parse(body);
       console.log(post);
       let text = post.text.substring(post.trigger_word.length + 1);
-      response.end(
-        JSON.stringify({
-          text: "You want to know about: " + JSON.stringify(text)
-        })
-      );
+
+      // Send the query to Yahoo! Weather to get a forecast
+      var query_str = 'select * from weather.forecast where woeid in (select woeid from geo.places(1) where text="' + text + '")';
+      var endpoint = 'https://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent(query_str) + '&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys'
+      req(endpoint, (error, resp, body) => {
+        var obj = JSON.parse(body);
+        var forecasts = obj.query.results.channel.item.forecast;
+        var desc = '*Forecast for: ' + text + '*\n';
+        for (i in forecasts) {
+          var forecast = forecasts[i];
+          desc += '> ' + forecast.day + ' - ' + forecast.date + ': High ' + forecast.high + ', Low ' + forecast.low + '\n';
+        }
+        response.end(JSON.stringify({
+          'text': desc
+        }));
+      });
     });
   }
 };
